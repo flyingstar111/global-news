@@ -112,20 +112,17 @@
 
 <script>
     // ----------------------------------------------------
-    // 步骤 1: 替换您的 GNews API Key
+    // 【重要替换 1】：您的 GNews API Key
     // ----------------------------------------------------
-    const API_KEY = "24f6c5073b941092284245f93c9cb217"; // 替换成您的真实 Key
+    const API_KEY = "24f6c5073b941092284245f93c9cb217";
     
     // ----------------------------------------------------
-    // 步骤 2: 替换您的 Worker 代理地址
+    // 【重要替换 2】：您的 Cloudflare Worker 代理地址
     // ----------------------------------------------------
-    // 此处必须使用 Cloudflare Worker 的网址，例如：
-    const BASE_URL = "https://gnews-proxy.yourname.workers.dev"; 
-    // 请将上面这行替换为您自己的 Worker 网址，确保格式正确！
+    const BASE_URL = "https://gnews-proxy.yourname.workers.dev"; // 请替换为您实际的 Worker 网址
     
     
-    // 可选择的国家/地区代码 (cc=国家代码)
-    // 注意：GNews 免费 Key 可能只返回 US 的数据
+    // 可选择的国家/地区代码
     const COUNTRIES = {
         "us": "美国",
         "gb": "英国",
@@ -156,13 +153,22 @@
             const url = `${BASE_URL}?country=${countryCode}&token=${API_KEY}`;
             
             const response = await fetch(url);
+
+            // 关键增强点 1: 如果 Worker 返回非 200 状态码 (如 429), 读取 Worker 错误
+            if (!response.ok) {
+                 // 尝试读取 Worker 返回的 JSON 错误信息
+                 const errorData = await response.json();
+                 const errorMessage = errorData.errors ? errorData.errors[0].message : `代理返回错误: ${response.status}`;
+                 newsListEl.innerHTML = `<p class="status-message" style="color: red;">${errorMessage}</p>`;
+                 return;
+            }
+
             const data = await response.json();
 
-            // 检查 GNews 响应是否包含错误字段
+            // 关键增强点 2: 检查 GNews 是否返回了错误对象 (状态码 200，但内容是错误)
             if (data.errors && data.errors.length > 0) {
-                 // GNews API 返回的具体错误
-                newsListEl.innerHTML = '<p class="status-message" style="color: red;">API 错误: ' + data.errors[0].message + '</p>';
-                return;
+                 newsListEl.innerHTML = '<p class="status-message" style="color: red;">API 错误: ' + data.errors[0].message + '</p>';
+                 return;
             }
 
             if (data.status === 'ok' && data.articles && data.articles.length > 0) {
@@ -170,17 +176,17 @@
                 renderNews(data.articles);
             } else {
                 // API 响应为空 (例如：免费 Key 请求了非授权国家的数据)
-                newsListEl.innerHTML = '<p class="status-message">未能获取新闻。API 响应错误或当前地区无最新头条。请尝试切换到美国源。</p>';
+                newsListEl.innerHTML = '<p class="status-message">未能获取新闻。API 响应为空或当前地区无最新头条。请尝试切换到美国源。</p>';
             }
 
         } catch (error) {
             console.error("Fetch Error:", error);
-            newsListEl.innerHTML = '<p class="status-message" style="color: red;">网络连接失败或代理访问失败。请检查 Worker 部署和网络连接。</p>';
+            newsListEl.innerHTML = '<p class="status-message" style="color: red;">网络连接失败或代码执行错误。请检查控制台信息。</p>';
         }
     }
 
     // ----------------------------------------------------
-    // 2. 核心功能：渲染新闻列表 (与原版相同)
+    // 2. 核心功能：渲染新闻列表
     // ----------------------------------------------------
     function renderNews(articles) {
         newsListEl.innerHTML = ''; // 清空旧列表
@@ -216,7 +222,7 @@
     }
 
     // ----------------------------------------------------
-    // 3. 核心功能：国家筛选按钮和交互 (与原版相同)
+    // 3. 核心功能：国家筛选按钮和交互
     // ----------------------------------------------------
     function setupControls() {
         Object.keys(COUNTRIES).forEach(code => {
@@ -224,7 +230,6 @@
             button.textContent = COUNTRIES[code];
             button.setAttribute('data-country', code);
             
-            // 默认选中美国
             if (code === currentCountry) {
                 button.classList.add('active');
             }
@@ -245,8 +250,8 @@
     // 4. 启动应用
     // ----------------------------------------------------
     document.addEventListener('DOMContentLoaded', () => {
-        setupControls(); // 绘制筛选按钮
-        fetchNews(currentCountry); // 首次加载新闻
+        setupControls();
+        fetchNews(currentCountry);
     });
 
 </script>
