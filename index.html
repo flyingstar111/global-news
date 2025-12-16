@@ -3,39 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全球新闻聚合</title>
+    <title>全球财经与加密货币聚合</title>
     <style>
+        /* CSS 样式保持不变 */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f7f9; }
         .container { max-width: 900px; margin: 20px auto; padding: 0 15px; }
         h1 { color: #333; text-align: center; margin-bottom: 20px; font-size: 1.5em; }
-        
         .tip-bar { background-color: #e3f2fd; color: #0d47a1; padding: 10px; border-radius: 8px; font-size: 0.9em; text-align: center; margin-bottom: 20px; border: 1px solid #bbdefb; }
-
-        /* 控制区容器 */
         .controls-section { margin-bottom: 15px; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .controls-label { font-size: 0.85em; color: #888; margin-bottom: 10px; font-weight: bold; }
-        
         .controls { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
         .controls::-webkit-scrollbar { display: none; } 
-        
         .controls button { padding: 6px 14px; border: 1px solid #eee; border-radius: 18px; background-color: #f8f9fa; cursor: pointer; white-space: nowrap; font-size: 13px; color: #555; transition: all 0.2s; }
-        
-        /* 选中状态 */
         .controls.country-group button.active { background-color: #007bff; color: #fff; border-color: #007bff; box-shadow: 0 2px 5px rgba(0,123,255,0.3); }
         .controls.category-group button.active { background-color: #28a745; color: #fff; border-color: #28a745; box-shadow: 0 2px 5px rgba(40,167,69,0.3); }
-
         .news-list { display: grid; grid-template-columns: 1fr; gap: 15px; }
         .news-card { background-color: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); display: flex; gap: 15px; text-decoration: none; color: #333; transition: transform 0.2s; }
         .news-card:active { transform: scale(0.98); }
         .news-content { flex-grow: 1; }
         .news-title { font-size: 1.1em; font-weight: bold; margin-bottom: 5px; line-height: 1.4; }
         .news-meta { font-size: 0.85em; color: #6c757d; margin-top: 5px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap;}
-        
         .tag { padding: 2px 6px; border-radius: 4px; font-size: 0.8em; background: #eee; }
         .tag-crypto { background: #fff3cd; color: #856404; }
         .tag-business { background: #d1ecf1; color: #0c5460; }
         .tag-tech { background: #d4edda; color: #155724; }
-        
         .news-image { width: 100px; height: 80px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background-color: #eee; }
         .status-message { text-align: center; padding: 50px; color: #666; word-break: break-word; }
     </style>
@@ -69,31 +60,21 @@
     // 🔴 🔴 🔴 配置区域 🔴 🔴 🔴
     // =========================================================
     
-    const API_KEY = "24f6c5073b941092284245f93c9cb217";
+    // 【已移除 API_KEY，Worker 将从 Secrets 中获取所有 Key】
     
-    // ⚠️⚠️⚠️ 请务必在此处填入您真实的 Cloudflare Worker 网址！
-    // 格式例如: https://gnews-proxy.zhangsan-123.workers.dev
-    const BASE_URL = "https://gnews-proxy.flyingstar998.workers.dev"; 
+    // ⚠️⚠️⚠️ 请务必在此处填入您真实的 Worker 网址！
+    const BASE_URL = "https://gnews-proxy.yourname.workers.dev"; 
 
     // =========================================================
 
     const COUNTRIES = {
-        "us": "🇺🇸 美国",
-        "gb": "🇬🇧 英国",
-        "cn": "🇨🇳 中国",
-        "hk": "🇭🇰 香港",
-        "jp": "🇯🇵 日本",
-        "kr": "🇰🇷 韩国",
-        "sg": "🇸🇬 新加坡",
-        "in": "🇮🇳 印度",
-        "de": "🇩🇪 德国"
+        "us": "🇺🇸 美国", "gb": "🇬🇧 英国", "cn": "🇨🇳 中国", "hk": "🇭🇰 香港",
+        "jp": "🇯🇵 日本", "kr": "🇰🇷 韩国", "sg": "🇸🇬 新加坡", "in": "🇮🇳 印度", "de": "🇩🇪 德国"
     };
 
     const CATEGORIES = {
-        "general": "📰 综合头条",
-        "business": "💰 经济金融",
-        "technology": "📱 科技创投",
-        "crypto": "🪙 加密货币"
+        "general": "📰 综合头条", "business": "💰 经济金融", 
+        "technology": "📱 科技创投", "crypto": "🪙 加密货币"
     };
 
     var currentCountry = 'us'; 
@@ -106,7 +87,7 @@
     // 核心获取函数
     async function fetchNews() {
         if (BASE_URL.indexOf("yourname") !== -1) {
-            newsListEl.innerHTML = '<p class="status-message" style="color: red; font-weight:bold;">配置错误！<br>请在代码第 139 行填入您真实的 Cloudflare Worker 网址。</p>';
+            newsListEl.innerHTML = '<p class="status-message" style="color: red; font-weight:bold;">配置错误！<br>请在代码中填入您真实的 Cloudflare Worker 网址。</p>';
             return;
         }
 
@@ -116,34 +97,29 @@
         newsListEl.innerHTML = '<p class="status-message">正在搜索 <b>' + countryName + '</b> 的 <b>' + categoryName + '</b>...</p>';
         
         try {
-            var url = BASE_URL + '?token=' + API_KEY + '&country=' + currentCountry;
-
-            if (currentCategory === 'business') {
-                url += '&topic=business'; 
-            } else if (currentCategory === 'technology') {
-                url += '&topic=technology'; 
-            } else if (currentCategory === 'crypto') {
-                url += '&q=crypto OR bitcoin OR blockchain'; 
-            }
+            // 【核心变化】：不再传递 token 参数
+            var url = BASE_URL + '?country=' + currentCountry;
+            
+            // 传递分类信息
+            if (currentCategory === 'business') { url += '&topic=business'; } 
+            else if (currentCategory === 'technology') { url += '&topic=technology'; } 
+            else if (currentCategory === 'crypto') { url += '&q=crypto'; }
 
             var response = await fetch(url);
 
-            // 处理网络错误
+            // 处理 HTTP 错误
             if (!response.ok) {
                  var errorMessage = '代理访问失败 (' + response.status + ')';
                  try {
                      var errorData = await response.json();
-                     // 【安全写法】不使用 ?. 符号，防止旧手机报错
                      if (errorData.errors && errorData.errors.length > 0) {
                          if (typeof errorData.errors[0] === 'string') {
-                             errorMessage = errorData.errors[0];
+                             errorMessage = errorData.errors[0]; 
                          } else if (errorData.errors[0].message) {
-                             errorMessage = errorData.errors[0].message;
+                             errorMessage = errorData.errors[0].message; 
                          }
                      }
-                 } catch (e) {
-                     // 忽略解析错误
-                 }
+                 } catch (e) { } 
                  
                  newsListEl.innerHTML = '<p class="status-message" style="color: red;">' + errorMessage + '</p>';
                  return;
@@ -151,23 +127,14 @@
 
             var data = await response.json();
 
-            // 处理 API 业务错误
-            if (data.errors) {
-                 var apiErrorMsg = "未知 API 错误";
-                 if (data.errors.length > 0) {
-                     if (typeof data.errors[0] === 'string') {
-                         apiErrorMsg = data.errors[0];
-                     } else if (data.errors[0].message) {
-                         apiErrorMsg = data.errors[0].message;
-                     }
-                 }
-                 newsListEl.innerHTML = '<p class="status-message" style="color: red;">API 错误: ' + apiErrorMsg + '</p>';
-                 return;
-            }
-
+            // 兼容 API 返回的 articles 结构
             if (data.articles && data.articles.length > 0) {
                 renderNews(data.articles);
             } else {
+                if (data.status === 'error' && data.message) {
+                    newsListEl.innerHTML = '<p class="status-message" style="color: red;">API 错误: ' + data.message + '</p>';
+                    return;
+                }
                 newsListEl.innerHTML = '<p class="status-message">该分类下暂时没有新闻。<br>请尝试切换到“美国”或“英国”源。</p>';
             }
 
@@ -194,16 +161,19 @@
             if (currentCategory === 'technology') tagHtml = '<span class="tag tag-tech">Tech</span>';
 
             var imgHtml = '';
-            if (article.image) {
-                imgHtml = '<img src="' + article.image + '" class="news-image" loading="lazy">';
+            var imageUrl = article.image || article.urlToImage;
+            if (imageUrl) {
+                imgHtml = '<img src="' + imageUrl + '" class="news-image" loading="lazy">';
             }
+
+            var sourceName = article.source.name || '未知来源';
 
             card.innerHTML = 
                 '<div class="news-content">' +
                     '<div class="news-title">' + article.title + '</div>' +
                     '<div class="news-meta">' +
                         tagHtml +
-                        '<span>' + article.source.name + '</span>' +
+                        '<span>' + sourceName + '</span>' +
                         '<span>· ' + dateStr + '</span>' +
                     '</div>' +
                 '</div>' + imgHtml;
