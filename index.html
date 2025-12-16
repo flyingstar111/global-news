@@ -3,25 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全球热点新闻聚合</title>
+    <title>全球财经与加密货币聚合</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f7f9; }
         .container { max-width: 900px; margin: 20px auto; padding: 0 15px; }
-        h1 { color: #333; text-align: center; margin-bottom: 20px; }
+        h1 { color: #333; text-align: center; margin-bottom: 20px; font-size: 1.5em; }
         
-        /* 提示条样式 */
         .tip-bar { background-color: #e3f2fd; color: #0d47a1; padding: 10px; border-radius: 8px; font-size: 0.9em; text-align: center; margin-bottom: 20px; border: 1px solid #bbdefb; }
 
-        .controls { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 10px; }
-        .controls button { padding: 8px 16px; border: 1px solid #ccc; border-radius: 20px; background-color: #fff; cursor: pointer; white-space: nowrap; font-size: 14px; }
-        .controls button.active { background-color: #007bff; color: #fff; border-color: #007bff; }
+        /* 控制区容器 */
+        .controls-section { margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .controls-label { font-size: 0.85em; color: #888; margin-bottom: 8px; font-weight: bold; }
         
+        .controls { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
+        .controls::-webkit-scrollbar { display: none; } /* 隐藏滚动条 */
+        
+        .controls button { padding: 6px 14px; border: 1px solid #eee; border-radius: 18px; background-color: #f8f9fa; cursor: pointer; white-space: nowrap; font-size: 13px; color: #555; transition: all 0.2s; }
+        
+        /* 选中状态：国家用蓝色 */
+        .controls.country-group button.active { background-color: #007bff; color: #fff; border-color: #007bff; box-shadow: 0 2px 5px rgba(0,123,255,0.3); }
+        
+        /* 选中状态：分类用绿色（区分视觉） */
+        .controls.category-group button.active { background-color: #28a745; color: #fff; border-color: #28a745; box-shadow: 0 2px 5px rgba(40,167,69,0.3); }
+
         .news-list { display: grid; grid-template-columns: 1fr; gap: 15px; }
         .news-card { background-color: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); display: flex; gap: 15px; text-decoration: none; color: #333; transition: transform 0.2s; }
         .news-card:active { transform: scale(0.98); }
         .news-content { flex-grow: 1; }
         .news-title { font-size: 1.1em; font-weight: bold; margin-bottom: 5px; line-height: 1.4; }
-        .news-meta { font-size: 0.85em; color: #6c757d; margin-top: 5px; }
+        .news-meta { font-size: 0.85em; color: #6c757d; margin-top: 5px; display: flex; align-items: center; gap: 5px; }
+        
+        /* 给特定分类加标签颜色 */
+        .tag { padding: 2px 6px; border-radius: 4px; font-size: 0.8em; background: #eee; }
+        .tag-crypto { background: #fff3cd; color: #856404; }
+        .tag-business { background: #d1ecf1; color: #0c5460; }
+        
         .news-image { width: 100px; height: 80px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background-color: #eee; }
         .status-message { text-align: center; padding: 50px; color: #666; }
     </style>
@@ -29,82 +45,110 @@
 <body>
 
 <div class="container">
-    <h1>全球热点新闻聚合</h1>
+    <h1>全球财经与加密货币聚合</h1>
     
     <div class="tip-bar">
-        💡 提示：国外新闻显示为外语？<br>请点击浏览器菜单的 <b>"翻译..."</b> 功能一键转中文。
+        💡 提示：点击右上角菜单 <b>"翻译..."</b> 可一键查看中文新闻。
     </div>
 
-    <div class="controls" id="country-controls"></div>
+    <div class="controls-section">
+        <div class="controls-label">1. 选择地区</div>
+        <div class="controls country-group" id="country-controls"></div>
+    </div>
+
+    <div class="controls-section">
+        <div class="controls-label">2. 新闻类别</div>
+        <div class="controls category-group" id="category-controls"></div>
+    </div>
+
     <div class="news-list" id="news-list">
-        <p class="status-message">正在加载新闻...</p>
+        <p class="status-message">正在初始化...</p>
     </div>
 </div>
 
 <script>
     // =========================================================
-    // 🔴 配置区域 (请再次确认这里！) 🔴
+    // 🔴 配置区域 🔴
     // =========================================================
     
-    // 1. 您的 GNews API Key
     const API_KEY = "24f6c5073b941092284245f93c9cb217";
     
-    // 2. 您的 Cloudflare Worker 真实网址
-    // ⚠️ 必须替换！不要保留 "yourname"！
-    // 例如: https://gnews-proxy.zhangsan-123.workers.dev
+    // ⚠️⚠️⚠️ 请务必替换为您自己的 Worker 网址！
     const BASE_URL = "https://gnews-proxy.flyingstar998.workers.dev"; 
 
     // =========================================================
 
-    // 扩展后的国家列表
+    // 国家列表
     const COUNTRIES = {
         "us": "🇺🇸 美国",
         "gb": "🇬🇧 英国",
         "cn": "🇨🇳 中国",
+        "hk": "🇭🇰 香港", // 增加香港，通常有很多财经新闻
         "jp": "🇯🇵 日本",
         "kr": "🇰🇷 韩国",
-        "ru": "🇷🇺 俄罗斯",
+        "sg": "🇸🇬 新加坡", // 增加新加坡，加密货币中心
         "in": "🇮🇳 印度",
-        "fr": "🇫🇷 法国",
-        "de": "🇩🇪 德国",
-        "it": "🇮🇹 意大利",
-        "ua": "🇺🇦 乌克兰"
+        "de": "🇩🇪 德国"
+    };
+
+    // 新增：新闻分类定义
+    const CATEGORIES = {
+        "general": "📰 综合头条",
+        "business": "💰 经济金融",
+        "technology": "📱 科技创投",
+        "crypto": "🪙 加密货币"  // 这是一个特殊的搜索分类
     };
 
     let currentCountry = 'us'; 
-    const newsListEl = document.getElementById('news-list');
-    const controlsEl = document.getElementById('country-controls');
+    let currentCategory = 'general'; // 默认分类
 
-    async function fetchNews(countryCode) {
+    const newsListEl = document.getElementById('news-list');
+    const countryControlsEl = document.getElementById('country-controls');
+    const categoryControlsEl = document.getElementById('category-controls');
+
+    async function fetchNews() {
         // 安全检查
         if (BASE_URL.includes("yourname.workers.dev")) {
             newsListEl.innerHTML = '<p class="status-message" style="color: red; font-weight:bold;">配置错误！<br>请在代码中填入您真实的 Cloudflare Worker 网址。</p>';
             return;
         }
 
-        newsListEl.innerHTML = '<p class="status-message">正在加载 ' + COUNTRIES[countryCode] + ' 的新闻...</p>';
+        const countryName = COUNTRIES[currentCountry];
+        const categoryName = CATEGORIES[currentCategory];
+        newsListEl.innerHTML = `<p class="status-message">正在搜索 <b>${countryName}</b> 的 <b>${categoryName}</b>...</p>`;
         
         try {
-            // 注意：我们不加 &lang=zh，因为加了会导致国外源没数据。
-            const url = `${BASE_URL}?country=${countryCode}&token=${API_KEY}`;
+            // 构建基础 URL
+            let url = `${BASE_URL}?token=${API_KEY}&country=${currentCountry}`;
+
+            // 根据选择的分类，添加不同的参数
+            if (currentCategory === 'business') {
+                url += '&topic=business'; // 财经主题
+            } else if (currentCategory === 'technology') {
+                url += '&topic=technology'; // 科技主题
+            } else if (currentCategory === 'crypto') {
+                // GNews 没有 crypto 主题，我们需要用关键字搜索 (q=crypto)
+                // 搜索时建议加上 OR bitcoin 以扩大结果
+                url += '&q=crypto OR bitcoin OR blockchain'; 
+            }
+            // 如果是 'general'，我们不加任何额外参数，默认显示头条
+
             const response = await fetch(url);
 
-            // 处理 Worker 返回的 429 错误
             if (response.status === 429) {
-                 newsListEl.innerHTML = `<p class="status-message" style="color: red;">API 请求次数已耗尽 (429)。<br>免费版每天限制 100 次，请明天再试。</p>`;
+                 newsListEl.innerHTML = `<p class="status-message" style="color: red;">API 请求次数已耗尽 (429)。<br>请明天再试。</p>`;
                  return;
             }
 
             if (!response.ok) {
                  const errorData = await response.json().catch(() => ({}));
-                 const errorMessage = errorData.errors ? errorData.errors[0].message : `代理访问失败 (状态码: ${response.status})`;
+                 const errorMessage = errorData.errors ? errorData.errors[0].message : `代理访问失败 (${response.status})`;
                  newsListEl.innerHTML = `<p class="status-message" style="color: red;">${errorMessage}</p>`;
                  return;
             }
 
             const data = await response.json();
 
-            // 处理 GNews 业务错误
             if (data.errors) {
                  newsListEl.innerHTML = '<p class="status-message" style="color: red;">API 错误: ' + data.errors[0].message + '</p>';
                  return;
@@ -113,7 +157,7 @@
             if (data.articles && data.articles.length > 0) {
                 renderNews(data.articles);
             } else {
-                newsListEl.innerHTML = '<p class="status-message">未获取到新闻。<br>可能该国家免费版不支持，或暂时无数据。</p>';
+                newsListEl.innerHTML = '<p class="status-message">该分类下暂时没有新闻。<br>请尝试切换到“美国”或“英国”源。</p>';
             }
 
         } catch (error) {
@@ -131,14 +175,22 @@
             card.href = article.url;
             card.target = '_blank';
             
-            // 简单的日期格式化
             const dateObj = new Date(article.publishedAt);
-            const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const dateStr = dateObj.toLocaleDateString();
+
+            // 根据当前分类生成一个小标签
+            let tagHtml = '';
+            if (currentCategory === 'crypto') tagHtml = '<span class="tag tag-crypto">Crypto</span>';
+            if (currentCategory === 'business') tagHtml = '<span class="tag tag-business">Biz</span>';
 
             card.innerHTML = `
                 <div class="news-content">
                     <div class="news-title">${article.title}</div>
-                    <div class="news-meta">${article.source.name} · ${dateStr}</div>
+                    <div class="news-meta">
+                        ${tagHtml}
+                        <span>${article.source.name}</span>
+                        <span>· ${dateStr}</span>
+                    </div>
                 </div>
                 ${article.image ? `<img src="${article.image}" class="news-image" loading="lazy">` : ''}
             `;
@@ -146,27 +198,45 @@
         });
     }
 
+    // 初始化按钮生成逻辑
     function setupControls() {
+        // 1. 生成国家按钮
         Object.keys(COUNTRIES).forEach(code => {
             const button = document.createElement('button');
             button.textContent = COUNTRIES[code];
             if (code === currentCountry) button.classList.add('active');
             
             button.onclick = () => {
-                document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+                // 更新 UI
+                document.querySelectorAll('.country-group button').forEach(b => b.classList.remove('active'));
                 button.classList.add('active');
+                // 更新数据
                 currentCountry = code;
-                fetchNews(code);
+                fetchNews();
             };
-            controlsEl.appendChild(button);
+            countryControlsEl.appendChild(button);
+        });
+
+        // 2. 生成分类按钮
+        Object.keys(CATEGORIES).forEach(cat => {
+            const button = document.createElement('button');
+            button.textContent = CATEGORIES[cat];
+            if (cat === currentCategory) button.classList.add('active');
+            
+            button.onclick = () => {
+                // 更新 UI
+                document.querySelectorAll('.category-group button').forEach(b => b.classList.remove('active'));
+                button.classList.add('active');
+                // 更新数据
+                currentCategory = cat;
+                fetchNews();
+            };
+            categoryControlsEl.appendChild(button);
         });
     }
 
-    // 初始化
     setupControls();
-    fetchNews(currentCountry);
+    fetchNews(); // 首次加载
 </script>
 </body>
 </html>
-
-
