@@ -5,256 +5,129 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>全球热点新闻聚合</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f7f9;
-        }
-        .container {
-            max-width: 900px;
-            margin: 20px auto;
-            padding: 0 15px;
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        /* 筛选按钮样式 */
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            overflow-x: auto;
-            padding-bottom: 10px;
-        }
-        .controls button {
-            padding: 10px 15px;
-            border: 1px solid #ccc;
-            border-radius: 20px;
-            background-color: #fff;
-            cursor: pointer;
-            transition: background-color 0.3s, color 0.3s;
-            white-space: nowrap;
-        }
-        .controls button.active {
-            background-color: #007bff;
-            color: #fff;
-            border-color: #007bff;
-        }
-        .controls button:hover:not(.active) {
-            background-color: #e9ecef;
-        }
-
-        /* 新闻卡片列表样式 */
-        .news-list {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 15px;
-        }
-        .news-card {
-            background-color: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            display: flex;
-            gap: 15px;
-            align-items: flex-start;
-            cursor: pointer;
-            text-decoration: none;
-            color: #333;
-        }
-        .news-card:hover {
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-        }
-        .news-content {
-            flex-grow: 1;
-        }
-        .news-title {
-            font-size: 1.1em;
-            font-weight: bold;
-            margin-bottom: 5px;
-            line-height: 1.4;
-        }
-        .news-meta {
-            font-size: 0.85em;
-            color: #6c757d;
-        }
-        .news-image {
-            width: 100px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 4px;
-            flex-shrink: 0;
-        }
-        /* 状态信息 */
-        .status-message {
-            text-align: center;
-            padding: 50px;
-            font-size: 1.2em;
-            color: #666;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f7f9; }
+        .container { max-width: 900px; margin: 20px auto; padding: 0 15px; }
+        h1 { color: #333; text-align: center; margin-bottom: 20px; }
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 10px; }
+        .controls button { padding: 10px 15px; border: 1px solid #ccc; border-radius: 20px; background-color: #fff; cursor: pointer; white-space: nowrap; }
+        .controls button.active { background-color: #007bff; color: #fff; border-color: #007bff; }
+        .news-list { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        .news-card { background-color: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); display: flex; gap: 15px; text-decoration: none; color: #333; }
+        .news-content { flex-grow: 1; }
+        .news-title { font-size: 1.1em; font-weight: bold; margin-bottom: 5px; }
+        .news-meta { font-size: 0.85em; color: #6c757d; }
+        .news-image { width: 100px; height: 80px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+        .status-message { text-align: center; padding: 50px; color: #666; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>全球热点新闻聚合</h1>
-
-    <div class="controls" id="country-controls">
-        </div>
-
+    <div class="controls" id="country-controls"></div>
     <div class="news-list" id="news-list">
         <p class="status-message">正在加载新闻...</p>
     </div>
 </div>
 
 <script>
-    // ----------------------------------------------------
-    // 【重要替换 1】：您的 GNews API Key
-    // ----------------------------------------------------
+    // =========================================================
+    // 🔴 🔴 🔴 配置区域 (请务必修改这里) 🔴 🔴 🔴
+    // =========================================================
+    
+    // 1. 您的 GNews API Key
     const API_KEY = "24f6c5073b941092284245f93c9cb217";
     
-    // ----------------------------------------------------
-    // 【重要替换 2】：您的 Cloudflare Worker 代理地址
-    // ----------------------------------------------------
-    const BASE_URL = "https://gnews-proxy.flyingstar998.workers.dev"; // 请替换为您实际的 Worker 网址
-    
-    
-    // 可选择的国家/地区代码
-    const COUNTRIES = {
-        "us": "美国",
-        "gb": "英国",
-        "de": "德国",
-        "jp": "日本",
-        "kr": "韩国",
-        "cn": "中国"
-    };
+    // 2. 您的 Cloudflare Worker 真实网址
+    // ❌ 不要直接用 gnews-proxy.yourname.workers.dev
+    // ✅ 去 Cloudflare 后台复制您的真实网址，例如: https://gnews-proxy.abcd-1234.workers.dev
+    const BASE_URL = "https://gnews-proxy.flyingstar998.workers.dev"; 
 
-    let currentCountry = 'us'; // 默认设置为最可能成功的美国
+    // =========================================================
 
+    const COUNTRIES = { "us": "美国", "gb": "英国", "cn": "中国", "jp": "日本" };
+    let currentCountry = 'us'; 
     const newsListEl = document.getElementById('news-list');
     const controlsEl = document.getElementById('country-controls');
 
-    // ----------------------------------------------------
-    // 1. 核心功能：获取新闻数据
-    // ----------------------------------------------------
     async function fetchNews(countryCode) {
-        if (API_KEY === "" || BASE_URL.includes("workers.dev") === false) {
-            newsListEl.innerHTML = '<p class="status-message" style="color: red;">配置错误：请检查 API Key 和 BASE_URL 是否已正确替换！</p>';
+        // 检查用户是否忘记替换网址
+        if (BASE_URL.includes("yourname.workers.dev")) {
+            newsListEl.innerHTML = '<p class="status-message" style="color: red; font-weight:bold;">配置错误：您忘记在代码中替换 BASE_URL 了！<br>请去 Cloudflare 复制真实的 Worker 网址。</p>';
             return;
         }
 
         newsListEl.innerHTML = '<p class="status-message">正在加载 ' + COUNTRIES[countryCode] + ' 的新闻...</p>';
         
         try {
-            // 构建 API 请求 URL (Worker 代理会接收这个带有 Key 的请求)
             const url = `${BASE_URL}?country=${countryCode}&token=${API_KEY}`;
-            
             const response = await fetch(url);
 
-            // 关键增强点 1: 如果 Worker 返回非 200 状态码 (如 429), 读取 Worker 错误
+            // 处理 Worker 返回的非 200 错误 (比如 429)
             if (!response.ok) {
-                 // 尝试读取 Worker 返回的 JSON 错误信息
-                 const errorData = await response.json();
-                 const errorMessage = errorData.errors ? errorData.errors[0].message : `代理返回错误: ${response.status}`;
+                 const errorData = await response.json().catch(() => ({}));
+                 const errorMessage = errorData.errors ? errorData.errors[0].message : `代理访问失败 (状态码: ${response.status})`;
                  newsListEl.innerHTML = `<p class="status-message" style="color: red;">${errorMessage}</p>`;
                  return;
             }
 
             const data = await response.json();
 
-            // 关键增强点 2: 检查 GNews 是否返回了错误对象 (状态码 200，但内容是错误)
-            if (data.errors && data.errors.length > 0) {
+            // 处理 GNews 返回的业务错误
+            if (data.errors) {
                  newsListEl.innerHTML = '<p class="status-message" style="color: red;">API 错误: ' + data.errors[0].message + '</p>';
                  return;
             }
 
-            if (data.status === 'ok' && data.articles && data.articles.length > 0) {
-                // 请求成功，渲染列表
+            if (data.articles && data.articles.length > 0) {
                 renderNews(data.articles);
             } else {
-                // API 响应为空 (例如：免费 Key 请求了非授权国家的数据)
-                newsListEl.innerHTML = '<p class="status-message">未能获取新闻。API 响应为空或当前地区无最新头条。请尝试切换到美国源。</p>';
+                newsListEl.innerHTML = '<p class="status-message">未获取到新闻。可能该国家/地区免费版不支持，请切换到【美国】试试。</p>';
             }
 
         } catch (error) {
             console.error("Fetch Error:", error);
-            newsListEl.innerHTML = '<p class="status-message" style="color: red;">网络连接失败或代码执行错误。请检查控制台信息。</p>';
+            newsListEl.innerHTML = '<p class="status-message" style="color: red;">网络连接失败。请检查 BASE_URL 是否填写正确，或者是否开启了 VPN。</p>';
         }
     }
 
-    // ----------------------------------------------------
-    // 2. 核心功能：渲染新闻列表
-    // ----------------------------------------------------
     function renderNews(articles) {
-        newsListEl.innerHTML = ''; // 清空旧列表
-        
+        newsListEl.innerHTML = ''; 
         articles.forEach(article => {
-            if (!article.title || !article.source || !article.url) return;
-            
+            if (!article.title || !article.url) return;
             const card = document.createElement('a');
             card.className = 'news-card';
             card.href = article.url;
             card.target = '_blank';
-
-            const publishedDate = new Date(article.publishedAt).toLocaleString('zh-CN', {
-                year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
-            });
-
+            const date = new Date(article.publishedAt).toLocaleDateString();
             card.innerHTML = `
                 <div class="news-content">
                     <div class="news-title">${article.title}</div>
-                    <div class="news-meta">
-                        ${article.source.name || '未知来源'} · ${publishedDate}
-                    </div>
+                    <div class="news-meta">${article.source.name} · ${date}</div>
                 </div>
-                ${article.urlToImage ? `<img src="${article.urlToImage}" alt="新闻图片" class="news-image">` : ''}
+                ${article.image ? `<img src="${article.image}" class="news-image">` : ''}
             `;
-            
             newsListEl.appendChild(card);
         });
-
-        if (articles.length === 0) {
-            newsListEl.innerHTML = '<p class="status-message">当前没有可显示的新闻头条。</p>';
-        }
     }
 
-    // ----------------------------------------------------
-    // 3. 核心功能：国家筛选按钮和交互
-    // ----------------------------------------------------
     function setupControls() {
         Object.keys(COUNTRIES).forEach(code => {
             const button = document.createElement('button');
             button.textContent = COUNTRIES[code];
-            button.setAttribute('data-country', code);
-            
-            if (code === currentCountry) {
+            if (code === currentCountry) button.classList.add('active');
+            button.onclick = () => {
+                document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
                 button.classList.add('active');
-            }
-
-            button.addEventListener('click', function() {
-                document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
-                
                 currentCountry = code;
-                fetchNews(currentCountry);
-            });
-            
+                fetchNews(code);
+            };
             controlsEl.appendChild(button);
         });
     }
 
-    // ----------------------------------------------------
-    // 4. 启动应用
-    // ----------------------------------------------------
-    document.addEventListener('DOMContentLoaded', () => {
-        setupControls();
-        fetchNews(currentCountry);
-    });
-
+    setupControls();
+    fetchNews(currentCountry);
 </script>
 </body>
 </html>
-
