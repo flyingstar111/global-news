@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全球当日最新新闻</title>
+    <title>全球热点新闻聚合</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -36,7 +36,7 @@
             background-color: #fff;
             cursor: pointer;
             transition: background-color 0.3s, color 0.3s;
-            white-space: nowrap; /* 防止按钮文字换行 */
+            white-space: nowrap;
         }
         .controls button.active {
             background-color: #007bff;
@@ -62,7 +62,7 @@
             gap: 15px;
             align-items: flex-start;
             cursor: pointer;
-            text-decoration: none; /* 移除链接下划线 */
+            text-decoration: none;
             color: #333;
         }
         .news-card:hover {
@@ -112,27 +112,30 @@
 
 <script>
     // ----------------------------------------------------
-    // **重要**：请在此处替换您的新闻 API Key
+    // 步骤 1: 替换您的 GNews API Key
     // ----------------------------------------------------
-    const API_KEY = "24f6c5073b941092284245f93c9cb217"; 
+    const API_KEY = "24f6c5073b941092284245f93c9cb217"; // 替换成您的真实 Key
     
-    // 如果您使用的是 News API
-    // const BASE_URL = "https://newsapi.org/v2/top-headlines";
+    // ----------------------------------------------------
+    // 步骤 2: 替换您的 Worker 代理地址
+    // ----------------------------------------------------
+    // 此处必须使用 Cloudflare Worker 的网址，例如：
+    const BASE_URL = "https://gnews-proxy.yourname.workers.dev"; 
+    // 请将上面这行替换为您自己的 Worker 网址，确保格式正确！
     
-    // 如果您使用的是 GNews，则需要调整 BASE_URL 和参数
-     const BASE_URL = "https://gnews-proxy.flyingstar998.workers.dev"; 
-
+    
     // 可选择的国家/地区代码 (cc=国家代码)
+    // 注意：GNews 免费 Key 可能只返回 US 的数据
     const COUNTRIES = {
-        "cn": "中国",
         "us": "美国",
         "gb": "英国",
+        "de": "德国",
         "jp": "日本",
         "kr": "韩国",
-        "de": "德国"
+        "cn": "中国"
     };
 
-    let currentCountry = 'us'; // 默认国家
+    let currentCountry = 'us'; // 默认设置为最可能成功的美国
 
     const newsListEl = document.getElementById('news-list');
     const controlsEl = document.getElementById('country-controls');
@@ -141,53 +144,55 @@
     // 1. 核心功能：获取新闻数据
     // ----------------------------------------------------
     async function fetchNews(countryCode) {
-        if (API_KEY === "YOUR_API_KEY_HERE" || API_KEY === "") {
-            newsListEl.innerHTML = '<p class="status-message" style="color: red;">错误：请在代码中替换 YOUR_API_KEY_HERE 为您的真实 API Key！</p>';
+        if (API_KEY === "" || BASE_URL.includes("workers.dev") === false) {
+            newsListEl.innerHTML = '<p class="status-message" style="color: red;">配置错误：请检查 API Key 和 BASE_URL 是否已正确替换！</p>';
             return;
         }
 
         newsListEl.innerHTML = '<p class="status-message">正在加载 ' + COUNTRIES[countryCode] + ' 的新闻...</p>';
         
         try {
-            // 构建 API 请求 URL
+            // 构建 API 请求 URL (Worker 代理会接收这个带有 Key 的请求)
             const url = `${BASE_URL}?country=${countryCode}&token=${API_KEY}`;
             
-            // 使用 fetch API 发送网络请求 (JavaScript的核心功能)
             const response = await fetch(url);
             const data = await response.json();
+
+            // 检查 GNews 响应是否包含错误字段
+            if (data.errors && data.errors.length > 0) {
+                 // GNews API 返回的具体错误
+                newsListEl.innerHTML = '<p class="status-message" style="color: red;">API 错误: ' + data.errors[0].message + '</p>';
+                return;
+            }
 
             if (data.status === 'ok' && data.articles && data.articles.length > 0) {
                 // 请求成功，渲染列表
                 renderNews(data.articles);
             } else {
-                // API 返回错误或无新闻
-                newsListEl.innerHTML = '<p class="status-message">未能获取新闻。API 响应错误或当前地区无最新头条。</p>';
+                // API 响应为空 (例如：免费 Key 请求了非授权国家的数据)
+                newsListEl.innerHTML = '<p class="status-message">未能获取新闻。API 响应错误或当前地区无最新头条。请尝试切换到美国源。</p>';
             }
 
         } catch (error) {
             console.error("Fetch Error:", error);
-            newsListEl.innerHTML = '<p class="status-message" style="color: red;">网络连接失败或 API Key 无效。请检查控制台信息。</p>';
+            newsListEl.innerHTML = '<p class="status-message" style="color: red;">网络连接失败或代理访问失败。请检查 Worker 部署和网络连接。</p>';
         }
     }
 
     // ----------------------------------------------------
-    // 2. 核心功能：渲染新闻列表
+    // 2. 核心功能：渲染新闻列表 (与原版相同)
     // ----------------------------------------------------
     function renderNews(articles) {
         newsListEl.innerHTML = ''; // 清空旧列表
         
-        // 遍历每条新闻 (article)，生成 HTML 元素
         articles.forEach(article => {
-            // 确保标题、来源和 URL 存在
             if (!article.title || !article.source || !article.url) return;
             
-            // 创建 A 标签作为新闻卡片，使其可点击跳转
             const card = document.createElement('a');
             card.className = 'news-card';
-            card.href = article.url; // 设置跳转链接
-            card.target = '_blank'; // 在新标签页打开
+            card.href = article.url;
+            card.target = '_blank';
 
-            // 格式化时间 (简化处理，仅显示日期和时间)
             const publishedDate = new Date(article.publishedAt).toLocaleString('zh-CN', {
                 year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
             });
@@ -211,7 +216,7 @@
     }
 
     // ----------------------------------------------------
-    // 3. 核心功能：国家筛选按钮和交互
+    // 3. 核心功能：国家筛选按钮和交互 (与原版相同)
     // ----------------------------------------------------
     function setupControls() {
         Object.keys(COUNTRIES).forEach(code => {
@@ -219,18 +224,15 @@
             button.textContent = COUNTRIES[code];
             button.setAttribute('data-country', code);
             
-            // 默认选中中国
+            // 默认选中美国
             if (code === currentCountry) {
                 button.classList.add('active');
             }
 
-            // 绑定点击事件
             button.addEventListener('click', function() {
-                // 1. 更新当前选中状态
                 document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
                 this.classList.add('active');
                 
-                // 2. 切换国家并重新获取数据
                 currentCountry = code;
                 fetchNews(currentCountry);
             });
@@ -250,6 +252,3 @@
 </script>
 </body>
 </html>
-
-
-
