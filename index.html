@@ -71,13 +71,12 @@
     
     const API_KEY = "24f6c5073b941092284245f93c9cb217";
     
-    // ⚠️⚠️⚠️ 请务必在此处填入您真实的 Worker 网址！
+    // ⚠️⚠️⚠️ 请务必在此处填入您真实的 Cloudflare Worker 网址！
     // 格式例如: https://gnews-proxy.zhangsan-123.workers.dev
     const BASE_URL = "https://gnews-proxy.flyingstar998.workers.dev"; 
 
     // =========================================================
 
-    // 国家列表
     const COUNTRIES = {
         "us": "🇺🇸 美国",
         "gb": "🇬🇧 英国",
@@ -90,7 +89,6 @@
         "de": "🇩🇪 德国"
     };
 
-    // 分类列表
     const CATEGORIES = {
         "general": "📰 综合头条",
         "business": "💰 经济金融",
@@ -98,68 +96,70 @@
         "crypto": "🪙 加密货币"
     };
 
-    let currentCountry = 'us'; 
-    let currentCategory = 'general';
+    var currentCountry = 'us'; 
+    var currentCategory = 'general';
 
-    const newsListEl = document.getElementById('news-list');
-    const countryControlsEl = document.getElementById('country-controls');
-    const categoryControlsEl = document.getElementById('category-controls');
+    var newsListEl = document.getElementById('news-list');
+    var countryControlsEl = document.getElementById('country-controls');
+    var categoryControlsEl = document.getElementById('category-controls');
 
-    // 核心获取函数（已修复 undefined 报错）
+    // 核心获取函数
     async function fetchNews() {
-        if (BASE_URL.includes("yourname.workers.dev")) {
-            newsListEl.innerHTML = '<p class="status-message" style="color: red; font-weight:bold;">配置错误！<br>请在代码第 140 行填入您真实的 Cloudflare Worker 网址。</p>';
+        if (BASE_URL.indexOf("yourname") !== -1) {
+            newsListEl.innerHTML = '<p class="status-message" style="color: red; font-weight:bold;">配置错误！<br>请在代码第 139 行填入您真实的 Cloudflare Worker 网址。</p>';
             return;
         }
 
-        const countryName = COUNTRIES[currentCountry];
-        const categoryName = CATEGORIES[currentCategory];
+        var countryName = COUNTRIES[currentCountry];
+        var categoryName = CATEGORIES[currentCategory];
         
-        newsListEl.innerHTML = `<p class="status-message">正在搜索 <b>${countryName}</b> 的 <b>${categoryName}</b>...</p>`;
+        newsListEl.innerHTML = '<p class="status-message">正在搜索 <b>' + countryName + '</b> 的 <b>' + categoryName + '</b>...</p>';
         
         try {
-            // 构建基础 URL
-            let url = `${BASE_URL}?token=${API_KEY}&country=${currentCountry}`;
+            var url = BASE_URL + '?token=' + API_KEY + '&country=' + currentCountry;
 
-            // 根据分类添加参数
             if (currentCategory === 'business') {
                 url += '&topic=business'; 
             } else if (currentCategory === 'technology') {
                 url += '&topic=technology'; 
             } else if (currentCategory === 'crypto') {
-                // 加密货币特殊搜索
                 url += '&q=crypto OR bitcoin OR blockchain'; 
             }
 
-            const response = await fetch(url);
+            var response = await fetch(url);
 
-            // 处理 HTTP 错误 (非 200)
+            // 处理网络错误
             if (!response.ok) {
-                 const errorData = await response.json().catch(() => ({}));
-                 let errorMessage = `代理访问失败 (${response.status})`;
-                 
-                 // 【修复点】：兼容处理 GNews 返回的字符串数组错误
-                 if (errorData.errors) {
-                     if (typeof errorData.errors[0] === 'string') {
-                         errorMessage = errorData.errors[0]; // 错误是字符串
-                     } else if (errorData.errors[0]?.message) {
-                         errorMessage = errorData.errors[0].message; // 错误是对象
+                 var errorMessage = '代理访问失败 (' + response.status + ')';
+                 try {
+                     var errorData = await response.json();
+                     // 【安全写法】不使用 ?. 符号，防止旧手机报错
+                     if (errorData.errors && errorData.errors.length > 0) {
+                         if (typeof errorData.errors[0] === 'string') {
+                             errorMessage = errorData.errors[0];
+                         } else if (errorData.errors[0].message) {
+                             errorMessage = errorData.errors[0].message;
+                         }
                      }
+                 } catch (e) {
+                     // 忽略解析错误
                  }
                  
-                 newsListEl.innerHTML = `<p class="status-message" style="color: red;">${errorMessage}</p>`;
+                 newsListEl.innerHTML = '<p class="status-message" style="color: red;">' + errorMessage + '</p>';
                  return;
             }
 
-            const data = await response.json();
+            var data = await response.json();
 
             // 处理 API 业务错误
             if (data.errors) {
-                 let apiErrorMsg = "未知 API 错误";
-                 if (typeof data.errors[0] === 'string') {
-                     apiErrorMsg = data.errors[0];
-                 } else if (data.errors[0]?.message) {
-                     apiErrorMsg = data.errors[0].message;
+                 var apiErrorMsg = "未知 API 错误";
+                 if (data.errors.length > 0) {
+                     if (typeof data.errors[0] === 'string') {
+                         apiErrorMsg = data.errors[0];
+                     } else if (data.errors[0].message) {
+                         apiErrorMsg = data.errors[0].message;
+                     }
                  }
                  newsListEl.innerHTML = '<p class="status-message" style="color: red;">API 错误: ' + apiErrorMsg + '</p>';
                  return;
@@ -179,46 +179,49 @@
 
     function renderNews(articles) {
         newsListEl.innerHTML = ''; 
-        articles.forEach(article => {
+        articles.forEach(function(article) {
             if (!article.title || !article.url) return;
-            const card = document.createElement('a');
+            var card = document.createElement('a');
             card.className = 'news-card';
             card.href = article.url;
             card.target = '_blank';
             
-            const dateStr = new Date(article.publishedAt).toLocaleDateString();
+            var dateStr = new Date(article.publishedAt).toLocaleDateString();
 
-            // 动态标签
-            let tagHtml = '';
+            var tagHtml = '';
             if (currentCategory === 'crypto') tagHtml = '<span class="tag tag-crypto">Crypto</span>';
             if (currentCategory === 'business') tagHtml = '<span class="tag tag-business">Biz</span>';
             if (currentCategory === 'technology') tagHtml = '<span class="tag tag-tech">Tech</span>';
 
-            card.innerHTML = `
-                <div class="news-content">
-                    <div class="news-title">${article.title}</div>
-                    <div class="news-meta">
-                        ${tagHtml}
-                        <span>${article.source.name}</span>
-                        <span>· ${dateStr}</span>
-                    </div>
-                </div>
-                ${article.image ? `<img src="${article.image}" class="news-image" loading="lazy">` : ''}
-            `;
+            var imgHtml = '';
+            if (article.image) {
+                imgHtml = '<img src="' + article.image + '" class="news-image" loading="lazy">';
+            }
+
+            card.innerHTML = 
+                '<div class="news-content">' +
+                    '<div class="news-title">' + article.title + '</div>' +
+                    '<div class="news-meta">' +
+                        tagHtml +
+                        '<span>' + article.source.name + '</span>' +
+                        '<span>· ' + dateStr + '</span>' +
+                    '</div>' +
+                '</div>' + imgHtml;
+            
             newsListEl.appendChild(card);
         });
     }
 
-    // 初始化按钮
     function setupControls() {
         // 国家按钮
-        Object.keys(COUNTRIES).forEach(code => {
-            const button = document.createElement('button');
+        Object.keys(COUNTRIES).forEach(function(code) {
+            var button = document.createElement('button');
             button.textContent = COUNTRIES[code];
             if (code === currentCountry) button.classList.add('active');
             
-            button.onclick = () => {
-                document.querySelectorAll('.country-group button').forEach(b => b.classList.remove('active'));
+            button.onclick = function() {
+                var btns = document.querySelectorAll('.country-group button');
+                for(var i=0; i<btns.length; i++) btns[i].classList.remove('active');
                 button.classList.add('active');
                 currentCountry = code;
                 fetchNews();
@@ -227,13 +230,14 @@
         });
 
         // 分类按钮
-        Object.keys(CATEGORIES).forEach(cat => {
-            const button = document.createElement('button');
+        Object.keys(CATEGORIES).forEach(function(cat) {
+            var button = document.createElement('button');
             button.textContent = CATEGORIES[cat];
             if (cat === currentCategory) button.classList.add('active');
             
-            button.onclick = () => {
-                document.querySelectorAll('.category-group button').forEach(b => b.classList.remove('active'));
+            button.onclick = function() {
+                var btns = document.querySelectorAll('.category-group button');
+                for(var i=0; i<btns.length; i++) btns[i].classList.remove('active');
                 button.classList.add('active');
                 currentCategory = cat;
                 fetchNews();
@@ -242,6 +246,7 @@
         });
     }
 
+    // 启动
     setupControls();
     fetchNews();
 </script>
