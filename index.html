@@ -95,7 +95,7 @@
         "general": "📰 综合头条",
         "business": "💰 经济金融",
         "technology": "📱 科技创投",
-        "crypto": "加密货币"
+        "crypto": "🪙 加密货币"
     };
 
     let currentCountry = 'us'; 
@@ -168,4 +168,82 @@
             if (data.articles && data.articles.length > 0) {
                 renderNews(data.articles);
             } else {
-                newsListEl.innerHTML = '<p class="status-message">该分类下暂时没有
+                newsListEl.innerHTML = '<p class="status-message">该分类下暂时没有新闻。<br>请尝试切换到“美国”或“英国”源。</p>';
+            }
+
+        } catch (error) {
+            console.error("Fetch Error:", error);
+            newsListEl.innerHTML = '<p class="status-message" style="color: red;">网络连接失败。<br>请检查网址是否正确，或尝试刷新页面。</p>';
+        }
+    }
+
+    function renderNews(articles) {
+        newsListEl.innerHTML = ''; 
+        articles.forEach(article => {
+            if (!article.title || !article.url) return;
+            const card = document.createElement('a');
+            card.className = 'news-card';
+            card.href = article.url;
+            card.target = '_blank';
+            
+            const dateStr = new Date(article.publishedAt).toLocaleDateString();
+
+            // 动态标签
+            let tagHtml = '';
+            if (currentCategory === 'crypto') tagHtml = '<span class="tag tag-crypto">Crypto</span>';
+            if (currentCategory === 'business') tagHtml = '<span class="tag tag-business">Biz</span>';
+            if (currentCategory === 'technology') tagHtml = '<span class="tag tag-tech">Tech</span>';
+
+            card.innerHTML = `
+                <div class="news-content">
+                    <div class="news-title">${article.title}</div>
+                    <div class="news-meta">
+                        ${tagHtml}
+                        <span>${article.source.name}</span>
+                        <span>· ${dateStr}</span>
+                    </div>
+                </div>
+                ${article.image ? `<img src="${article.image}" class="news-image" loading="lazy">` : ''}
+            `;
+            newsListEl.appendChild(card);
+        });
+    }
+
+    // 初始化按钮
+    function setupControls() {
+        // 国家按钮
+        Object.keys(COUNTRIES).forEach(code => {
+            const button = document.createElement('button');
+            button.textContent = COUNTRIES[code];
+            if (code === currentCountry) button.classList.add('active');
+            
+            button.onclick = () => {
+                document.querySelectorAll('.country-group button').forEach(b => b.classList.remove('active'));
+                button.classList.add('active');
+                currentCountry = code;
+                fetchNews();
+            };
+            countryControlsEl.appendChild(button);
+        });
+
+        // 分类按钮
+        Object.keys(CATEGORIES).forEach(cat => {
+            const button = document.createElement('button');
+            button.textContent = CATEGORIES[cat];
+            if (cat === currentCategory) button.classList.add('active');
+            
+            button.onclick = () => {
+                document.querySelectorAll('.category-group button').forEach(b => b.classList.remove('active'));
+                button.classList.add('active');
+                currentCategory = cat;
+                fetchNews();
+            };
+            categoryControlsEl.appendChild(button);
+        });
+    }
+
+    setupControls();
+    fetchNews();
+</script>
+</body>
+</html>
