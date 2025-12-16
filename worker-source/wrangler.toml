@@ -1,0 +1,12 @@
+name = "gnews-proxy"
+main = "worker.js"
+compatibility_date = "2024-10-01" # 请使用当前或较近的日期
+# type = "javascript" # 默认不需要设置
+
+# 确保 worker.js 可以读取 NEWS_API_KEY
+[vars] 
+# 注意：secrets（比如 NEWS_API_KEY）不需要列在这里，它会自动从 Cloudflare 后台读取。
+# 如果您想让它读取 GNEWS_API_KEY，您也可以将其定义为 Secret。
+
+# Worker 的账户 ID
+account_id = "YOUR_CLOUDFLARE_ACCOUNT_ID" 
