@@ -1,6 +1,6 @@
-// Worker 代理代码 (Final Double Failover Edition: GNews -> News API - 修复 CN/HK 400 错误)
-const GNEWS_API_URL = 'https://gnews.io/api/v4/top-headlines';
-const GNEWS_SEARCH_URL = 'https://gnews.io/api/v4/search';
+// Worker 代理代码 (Final Double Failover Edition - 修复 GNews 400 核心 Bug)
+const GNEWS_API_URL = 'https://gnews.io/api/v4/top-headlines'; // 仅用于 topic/country
+const GNEWS_SEARCH_URL = 'https://gnews.io/api/v4/search'; // 仅用于 q (query)
 const NEWSAPI_URL = 'https://newsapi.org/v2/top-headlines'; 
 const NEWSAPI_SEARCH_URL = 'https://newsapi.org/v2/everything'; 
 
@@ -50,20 +50,34 @@ async function fetchNewsFromGNews(country, query, topic) {
     gnewsParams.set('sortby', GNEWS_SORT); 
     gnewsParams.set('token', GNEWS_API_KEY); 
 
-    // 传递前端参数
     if (country) gnewsParams.set('country', country);
     if (topic) gnewsParams.set('topic', topic);
     if (query) gnewsParams.set('q', query);
 
-    // 【核心修复点】：避免 GNews 针对 CN/HK 的 topic 400 错误
-    // 如果是 CN 或 HK 并且不是综合头条，则移除 country 参数，让它搜索全球
-    if ((country === 'cn' || country === 'hk') && (topic || query)) {
-        gnewsParams.delete('country');
-        // 最好加上 language=zh 确保是中文结果 (但 GNews free tier language支持有限，先不加)
+    // 【核心修复点】：根据参数精确选择 GNews 接口
+    let targetEndpoint;
+    
+    if (query) {
+        // 只有在明确搜索关键词 (crypto) 时，才使用 Search 接口
+        targetEndpoint = GNEWS_SEARCH_URL;
+        gnewsParams.delete('topic'); // Search 接口必须删除 topic
+    } else if (topic) {
+        // business, technology 等标准分类，必须使用 Top-Headlines 接口
+        targetEndpoint = GNEWS_API_URL;
+        gnewsParams.delete('q'); // Top-Headlines 接口必须删除 q
+    } else {
+        // general (综合头条)
+        targetEndpoint = GNEWS_API_URL;
+        gnewsParams.delete('q');
+        gnewsParams.delete('topic');
     }
 
 
-    const targetEndpoint = (query || topic) ? GNEWS_SEARCH_URL : GNEWS_API_URL;
+    // 避免 GNews 针对 CN/HK 的 topic 400 错误 (保留之前修复的逻辑)
+    if ((country === 'cn' || country === 'hk') && topic) {
+        gnewsParams.delete('country');
+    }
+
     const gnewsUrl = targetEndpoint + '?' + gnewsParams.toString(); 
 
     const response = await fetch(gnewsUrl);
@@ -80,7 +94,7 @@ async function fetchNewsFromGNews(country, query, topic) {
 // =========================================================
 // API 函数 - 2. News API (Secondary)
 // =========================================================
-// (保持 News API 逻辑不变，因为它的逻辑在处理分类时已经比 GNews 健壮)
+// (该函数保持不变，因为它在之前的修复中已经稳定)
 
 async function fetchNewsFromNewsAPI(country, query, topic) {
     if (typeof NEWS_API_KEY === 'undefined' || NEWS_API_KEY.length < 5) {
@@ -105,7 +119,7 @@ async function fetchNewsFromNewsAPI(country, query, topic) {
     } else if (topic && (topic === 'business' || topic === 'technology')) {
          targetUrl = NEWSAPI_URL;
          if (country) newsApiParams.set('country', country);
-         newsApiParams.set('category', topic); // 将 topic 直接用作 category
+         newsApiParams.set('category', topic); 
          
     } else {
          if (country) newsApiParams.set('country', country);
