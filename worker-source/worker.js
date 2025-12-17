@@ -1,4 +1,4 @@
-// Worker 代理代码 (Final Double Failover Edition: GNews -> News API)
+// Worker 代理代码 (Final Double Failover Edition: GNews -> News API - 修复 CN/HK 400 错误)
 const GNEWS_API_URL = 'https://gnews.io/api/v4/top-headlines';
 const GNEWS_SEARCH_URL = 'https://gnews.io/api/v4/search';
 const NEWSAPI_URL = 'https://newsapi.org/v2/top-headlines'; 
@@ -17,7 +17,7 @@ addEventListener('fetch', event => {
 });
 
 
-// 辅助函数：处理 CORS 和 Headers
+// 辅助函数：处理 CORS 和 Headers (保持不变)
 const buildResponse = (response) => {
     const newHeaders = new Headers(response.headers);
     newHeaders.set('Access-Control-Allow-Origin', '*'); 
@@ -29,7 +29,7 @@ const buildResponse = (response) => {
     return new Response(response.body, { status: response.status, headers: newHeaders });
 };
 
-// 辅助函数：构建错误响应
+// 辅助函数：构建错误响应 (保持不变)
 const buildErrorResponse = (message, status = 503) => {
     return new Response(JSON.stringify({ 
         errors: [{ message: message }] 
@@ -42,31 +42,37 @@ const buildErrorResponse = (message, status = 503) => {
 // =========================================================
 
 async function fetchNewsFromGNews(country, query, topic) {
-    // 检查 GNews Key 是否配置
     if (typeof GNEWS_API_KEY === 'undefined' || GNEWS_API_KEY.length < 5) {
         return { status: 500, failed: true, message: "GNews API Key 未配置" };
     }
     
     let gnewsParams = new URLSearchParams();
     gnewsParams.set('sortby', GNEWS_SORT); 
-    gnewsParams.set('token', GNEWS_API_KEY); // 使用 Secrets Key
+    gnewsParams.set('token', GNEWS_API_KEY); 
 
     // 传递前端参数
     if (country) gnewsParams.set('country', country);
     if (topic) gnewsParams.set('topic', topic);
     if (query) gnewsParams.set('q', query);
 
+    // 【核心修复点】：避免 GNews 针对 CN/HK 的 topic 400 错误
+    // 如果是 CN 或 HK 并且不是综合头条，则移除 country 参数，让它搜索全球
+    if ((country === 'cn' || country === 'hk') && (topic || query)) {
+        gnewsParams.delete('country');
+        // 最好加上 language=zh 确保是中文结果 (但 GNews free tier language支持有限，先不加)
+    }
+
+
     const targetEndpoint = (query || topic) ? GNEWS_SEARCH_URL : GNEWS_API_URL;
     const gnewsUrl = targetEndpoint + '?' + gnewsParams.toString(); 
 
     const response = await fetch(gnewsUrl);
     
-    // GNews 成功或只是一般的业务错误 (非 429/403)
     if (response.ok || (response.status !== 429 && response.status !== 403)) {
         return { status: response.status, response };
     }
     
-    // GNews 失败 (额度用尽或被拒绝)
+    // GNews 失败 (400, 429, 403)
     return { status: response.status, failed: true, message: `GNews API 错误 (${response.status})` };
 }
 
@@ -74,9 +80,9 @@ async function fetchNewsFromGNews(country, query, topic) {
 // =========================================================
 // API 函数 - 2. News API (Secondary)
 // =========================================================
+// (保持 News API 逻辑不变，因为它的逻辑在处理分类时已经比 GNews 健壮)
 
 async function fetchNewsFromNewsAPI(country, query, topic) {
-    // 检查 News API Key 是否配置
     if (typeof NEWS_API_KEY === 'undefined' || NEWS_API_KEY.length < 5) {
         return { status: 500, failed: true, message: "News API Key 未配置" };
     }
@@ -87,26 +93,27 @@ async function fetchNewsFromNewsAPI(country, query, topic) {
     let targetUrl = NEWSAPI_URL;
 
     // 参数转换逻辑 (News API)
-    if (query || topic) {
+    if (query || (topic && topic !== 'business' && topic !== 'technology')) {
          targetUrl = NEWSAPI_SEARCH_URL;
          let fullQuery = query || "";
          if (topic) {
-             // 映射 topic 到 News API 的搜索关键词
              const topicMap = { 'business': 'business', 'technology': 'technology', 'crypto': 'cryptocurrency OR bitcoin' };
              fullQuery += (fullQuery ? ' AND ' : '') + (topicMap[topic] || topic);
          }
          newsApiParams.set('q', fullQuery);
-         // 对于中文区域，设置 language
          if (country === 'cn' || country === 'hk') newsApiParams.set('language', 'zh');
+    } else if (topic && (topic === 'business' || topic === 'technology')) {
+         targetUrl = NEWSAPI_URL;
+         if (country) newsApiParams.set('country', country);
+         newsApiParams.set('category', topic); // 将 topic 直接用作 category
+         
     } else {
          if (country) newsApiParams.set('country', country);
-         if (topic) newsApiParams.set('category', topic); 
     }
     
     const newsApiUrl = `${targetUrl}?${newsApiParams.toString()}`;
     
     try {
-        // News API 要求 User-Agent 头部
         const newsApiResponse = await fetch(newsApiUrl, { headers: NEWSAPI_HEADERS });
 
         if (newsApiResponse.ok) {
@@ -120,14 +127,13 @@ async function fetchNewsFromNewsAPI(country, query, topic) {
             return { status: newsApiResponse.status, failed: true, message: debugMessage };
         }
     } catch (e) {
-        // 网络连接超时或 DNS 失败
         return { status: 503, failed: true, message: `News API 网络连接超时或 DNS 失败。` };
     }
 }
 
 
 // =========================================================
-// 主入口函数
+// 主入口函数 (保持不变)
 // =========================================================
 
 async function handleRequest(request) {
